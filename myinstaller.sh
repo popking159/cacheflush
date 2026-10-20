@@ -18,6 +18,13 @@ PY_DEPENDS=""
 SYS_DEPENDS=""
 # =========================================================================
 
+# Terminal Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
 # Dynamically construct the download link
 PLUGIN_URL="https://github.com/${USERNAME}/${REPO}/raw/refs/heads/main/main.tar.gz"
 
@@ -31,7 +38,14 @@ PYTHON_VERSION=""
 FINAL_DEPENDS=""
 
 log() {
-    echo "$1"
+    # Automatically colorize based on the log tag
+    case "$1" in
+        *[INFO]*) echo -e "${CYAN}$1${NC}" ;;
+        *[OK]*) echo -e "${GREEN}$1${NC}" ;;
+        *[WARN]*) echo -e "${YELLOW}$1${NC}" ;;
+        *[ERROR]*) echo -e "${RED}$1${NC}" ;;
+        *) echo -e "$1" ;;
+    esac
 }
 
 has_cmd() {
@@ -55,9 +69,9 @@ is_pkg_installed() {
     return 1
 }
 
-echo "===================================================="
-echo "         $PLUGIN_NAME INSTALLER UTILITY             "
-echo "===================================================="
+echo -e "${GREEN}====================================================${NC}"
+echo -e "${GREEN}         $PLUGIN_NAME INSTALLER UTILITY${NC}"
+echo -e "${GREEN}====================================================${NC}"
 
 # 1. Detect Environment & Python Version
 if has_cmd opkg; then
@@ -81,65 +95,12 @@ for dep in $PY_DEPENDS; do
     FINAL_DEPENDS="$FINAL_DEPENDS ${PY_PREFIX}${dep}"
 done
 for dep in $SYS_DEPENDS; do
-    FINAL_DEPENDS="$FINAL_DEPENDS $dep"
+    FINAL_DEPENDS="$FINAL_DEPENDS$dep"
 done
-
-# (Feed update phase removed per request)
 
 # 3. Check and Download Dependencies (Strict Mode)
 if [ -n "$FINAL_DEPENDS" ]; then
     log "[INFO] Verifying required dependencies..."
     for pkg in $FINAL_DEPENDS; do
-        if is_pkg_installed "$pkg"; then
-            log "[OK] Already installed: $pkg"
-        else
-            log "[INFO] Downloading and installing: $pkg"
-            if [ "$PKG_MANAGER" = "opkg" ]; then
-                opkg install "$pkg" >/dev/null 2>&1
-            elif [ "$PKG_MANAGER" = "apt" ]; then
-                DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg" >/dev/null 2>&1
-            fi
-            
-            # Strict Verification: If it failed to install, abort immediately
-            if is_pkg_installed "$pkg"; then
-                log "[OK] Successfully installed: $pkg"
-            else
-                log "[ERROR] Required dependency '$pkg' could not be installed! Aborting setup."
-                exit 1
-            fi
-        fi
-    done
-else
-    log "[INFO] No dependencies specified in configuration. Skipping dependency phase."
-fi
-
-# 4. Download Plugin Archive
-log "[INFO] Downloading main plugin tree archive..."
-rm -f "$TMP_FILE"
-wget -q --no-check-certificate "$PLUGIN_URL" -O "$TMP_FILE"
-
-if [ ! -s "$TMP_FILE" ]; then
-    log "[ERROR] Download failed or file is empty!"
-    rm -f "$TMP_FILE"
-    exit 1
-fi
-
-# 5. Extract directly to ROOT (/)
-log "[INFO] Extracting payload contents to system paths..."
-tar -xzf "$TMP_FILE" -C /
-if [ $? -ne 0 ]; then
-    log "[ERROR] Extraction failed!"
-    rm -f "$TMP_FILE"
-    exit 1
-fi
-
-rm -f "$TMP_FILE"
-sync
-
-echo "===================================================="
-echo "          $PLUGIN_NAME INSTALLATION COMPLETE        "
-echo "===================================================="
-
-# (GUI Restart removed per request)
-
-exit 0
+        if is_pkg_installed "$pkg";
+        
